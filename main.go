@@ -22,12 +22,11 @@ func main() {
 
 func run() error {
 	srv := &http.Server{
-		Addr: "0.0.0.0:8080",
-		// Good practice to set timeouts to avoid Slowloris attacks.
+		Addr:         "0.0.0.0:8080",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      api.NewServer().Router, // Pass our instance of gorilla/mux in.
+		Handler:      api.NewApiHandler().Router,
 	}
 
 	go func() {
@@ -39,17 +38,13 @@ func run() error {
 	}()
 
 	c := make(chan os.Signal, 1)
-	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
-	signal.Notify(c, os.Interrupt)
 
+	// Shutdowns when quit via SIGINT (Ctrl+C)
+	signal.Notify(c, os.Interrupt)
 	// Block until we receive our signal.
 	<-c
 
-	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline.
 	return srv.Shutdown(ctx)
 }
