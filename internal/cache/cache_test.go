@@ -1,11 +1,16 @@
 package cache_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/hailkomputer/kvicksand/internal/cache"
 )
+
+func TestMain(m *testing.M) {
+	os.Exit(m.Run())
+}
 
 func TestCache(t *testing.T) {
 

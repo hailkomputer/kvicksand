@@ -3,99 +3,71 @@ package api_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/hailkomputer/kvicksand/internal/api"
 	"github.com/hailkomputer/kvicksand/internal/api/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 )
 
-type ApiHandlerSuite struct {
-	suite.Suite
-
-	recorder   *httptest.ResponseRecorder
+var (
 	apiHandler *api.ApiHandler
 	cache      *mocks.Cache
+)
+
+func TestMain(m *testing.M) {
+	cache = &mocks.Cache{}
+	apiHandler = api.NewApiHandler(cache)
+
+	os.Exit(m.Run())
 }
 
-func (a *ApiHandlerSuite) SetupTest() {
-	a.recorder = httptest.NewRecorder()
-	a.cache = &mocks.Cache{}
-	a.apiHandler = api.NewApiHandler(a.cache)
+func TestIndex(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	recorder := httptest.NewRecorder()
+
+	apiHandler.Router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("returned %v. Expected %v.", recorder.Code, http.StatusOK)
+	}
 }
 
-func TestApiHandlerSuite(t *testing.T) {
-	suite.Run(t, new(ApiHandlerSuite))
+func TestPostValue(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodPost, "/key", strings.NewReader("välue"))
+	cache.On("Set", "key", "välue")
+	recorder := httptest.NewRecorder()
+
+	apiHandler.Router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("returned %v. Expected %v.", recorder.Code, http.StatusOK)
+	}
+
+	req, _ = http.NewRequest(http.MethodPost, "/key", nil)
+	recorder = httptest.NewRecorder()
+
+	apiHandler.Router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusBadRequest {
+		t.Errorf("returned %v. Expected %v.", recorder.Code, http.StatusBadRequest)
+	}
 }
 
-func (a *ApiHandlerSuite) TestIndex_ShouldReturn200() {
-	req, _ := http.NewRequest(
-		http.MethodGet,
-		"/",
-		nil,
-	)
+func TestGetValue(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/key1", nil)
+	cache.On("Get", "key1").Return("välue", true)
+	recorder := httptest.NewRecorder()
 
-	a.apiHandler.Router.ServeHTTP(a.recorder, req)
-	assert.Equal(a.T(), http.StatusOK, a.recorder.Code)
-}
+	apiHandler.Router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusOK {
+		t.Errorf("returned %v. Expected %v.", recorder.Code, http.StatusOK)
+	}
 
-func (a *ApiHandlerSuite) TestPostValue_ShouldReturn200() {
-	req, _ := http.NewRequest(
-		http.MethodPost,
-		"/key",
-		strings.NewReader("välue"),
-	)
+	req, _ = http.NewRequest(http.MethodGet, "/key2", nil)
+	cache.On("Get", "key2").Return("", false)
+	recorder = httptest.NewRecorder()
 
-	a.cache.On("Set", "key", "välue")
-
-	a.apiHandler.Router.ServeHTTP(a.recorder, req)
-	assert.Equal(a.T(), http.StatusOK, a.recorder.Code)
-}
-
-func (a *ApiHandlerSuite) TestPostValue_ShouldReturn400() {
-	req, _ := http.NewRequest(
-		http.MethodPost,
-		"/key",
-		nil,
-	)
-
-	a.apiHandler.Router.ServeHTTP(a.recorder, req)
-	assert.Equal(a.T(), http.StatusBadRequest, a.recorder.Code)
-}
-
-func (a *ApiHandlerSuite) TestGetValue_ShouldReturn404() {
-	req, _ := http.NewRequest(
-		http.MethodGet,
-		"/key",
-		nil,
-	)
-
-	a.cache.On("Get", "key").Return("", false)
-
-	a.apiHandler.Router.ServeHTTP(a.recorder, req)
-	assert.Equal(a.T(), http.StatusNotFound, a.recorder.Code)
-}
-
-func (a *ApiHandlerSuite) TestGetValue_ShouldReturn200() {
-	req, _ := http.NewRequest(
-		http.MethodPost,
-		"/key",
-		strings.NewReader("välue"),
-	)
-
-	a.cache.On("Set", "key", "välue")
-	a.apiHandler.Router.ServeHTTP(a.recorder, req)
-
-	req, _ = http.NewRequest(
-		http.MethodGet,
-		"/key",
-		nil,
-	)
-
-	a.cache.On("Get", "key").Return("välue", true)
-
-	a.apiHandler.Router.ServeHTTP(a.recorder, req)
-	assert.Equal(a.T(), http.StatusOK, a.recorder.Code)
+	apiHandler.Router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusNotFound {
+		t.Errorf("returned %v. Expected %v.", recorder.Code, http.StatusNotFound)
+	}
 }
