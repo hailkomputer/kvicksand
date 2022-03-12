@@ -9,7 +9,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/hailkomputer/kvicksand/api"
+	"github.com/hailkomputer/kvicksand/internal/api"
+	"github.com/hailkomputer/kvicksand/internal/cache"
 )
 
 func main() {
@@ -26,7 +27,7 @@ func run() error {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      api.NewApiHandler().Router,
+		Handler:      api.NewApiHandler(cache.NewCache()).Router,
 	}
 
 	go func() {

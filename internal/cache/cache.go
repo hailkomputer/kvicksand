@@ -18,18 +18,14 @@ func (v Value) isExpired() bool {
 type Cache struct {
 	keyValuePair map[string]Value
 	mutex        sync.RWMutex
-	wg           sync.WaitGroup
-	sc           chan bool
 }
 
 // NewCache initializes a new cache and also starts to run a cleanup process
 func NewCache() *Cache {
 	keyValuePair := make(map[string]Value)
-	cache := &Cache{keyValuePair: keyValuePair, sc: make(chan bool)}
+	cache := &Cache{keyValuePair: keyValuePair}
 
-	cache.wg.Add(1)
 	go func() {
-		defer cache.wg.Done()
 		cache.cleanup()
 	}()
 
@@ -66,21 +62,16 @@ func (c *Cache) Get(key string) (string, bool) {
 // cleanup runs every 5 seconds until timeout context forces it on shutdown.
 // It will delete all expired key value pairs while using a write mutex
 func (c *Cache) cleanup() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-c.sc:
-			return
-		case <-ticker.C:
-			c.mutex.Lock()
-			for key, value := range c.keyValuePair {
-				if value.isExpired() {
-					delete(c.keyValuePair, key)
-				}
+	for range ticker.C {
+		c.mutex.Lock()
+		for key, value := range c.keyValuePair {
+			if value.isExpired() {
+				delete(c.keyValuePair, key)
 			}
-			c.mutex.Unlock()
 		}
+		c.mutex.Unlock()
 	}
 }

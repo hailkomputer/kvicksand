@@ -1,27 +1,36 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/hailkomputer/kvicksand/pkg/cache"
 )
+
+type CacheStore interface {
+	// Get tries to fetch the value for the given key
+	// It will always return second argument as false, in cases where first
+	// value is expired or not found
+	Get(key string) (string, bool)
+	// Set writes the value for the given key
+	// Expiration duration is hard coded as 30 minutes
+	// If a value for the specified key already exists, then it will be overwritten
+	Set(key, value string)
+}
 
 type ApiHandler struct {
 	Router *mux.Router
-	Cache  *cache.Cache
+	Cache  CacheStore
 }
 
-func NewApiHandler() *ApiHandler {
+func NewApiHandler(cache CacheStore) *ApiHandler {
 	a := &ApiHandler{
 		Router: mux.NewRouter().StrictSlash(false),
-		Cache:  cache.NewCache(),
+		Cache:  cache,
 	}
 
-	a.Router.Use(loggingMiddleware, recoveryMiddleware)
+	a.Router.Use(loggingMiddleware)
 
 	for _, route := range a.createRoutes() {
 		a.Router.
@@ -42,30 +51,6 @@ func (a *ApiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) {
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println(fmt.Sprintf("%s:%s", r.Method, r.RequestURI))
-		next.ServeHTTP(w, r)
-	})
-}
-
-// recoveryMiddleware creates a HTTP handler for recovering from a panic.
-func recoveryMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var err error
-		defer func() {
-			rec := recover()
-			if rec != nil {
-				switch t := rec.(type) {
-				case string:
-					err = errors.New(t)
-				case error:
-					err = t
-				default:
-					err = errors.New("Unknown error")
-				}
-				msg := fmt.Sprintf("Recovered: %s, request: %s %s", err, r.Method, r.URL.Path)
-				http.Error(w, msg, http.StatusInternalServerError)
-			}
-		}()
-
 		next.ServeHTTP(w, r)
 	})
 }

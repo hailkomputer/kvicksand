@@ -1,13 +1,15 @@
-package cache
+package cache_test
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/hailkomputer/kvicksand/internal/cache"
 )
 
 func TestCache(t *testing.T) {
 
-	cache := NewCache()
+	cache := cache.NewCache()
 
 	_, ok := cache.Get("k1")
 	if ok {

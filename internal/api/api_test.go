@@ -1,4 +1,4 @@
-package api
+package api_test
 
 import (
 	"net/http"
@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hailkomputer/kvicksand/internal/api"
+	"github.com/hailkomputer/kvicksand/internal/api/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -14,12 +16,14 @@ type ApiHandlerSuite struct {
 	suite.Suite
 
 	recorder   *httptest.ResponseRecorder
-	apiHandler *ApiHandler
+	apiHandler *api.ApiHandler
+	cache      *mocks.Cache
 }
 
 func (a *ApiHandlerSuite) SetupTest() {
 	a.recorder = httptest.NewRecorder()
-	a.apiHandler = NewApiHandler()
+	a.cache = &mocks.Cache{}
+	a.apiHandler = api.NewApiHandler(a.cache)
 }
 
 func TestApiHandlerSuite(t *testing.T) {
@@ -44,6 +48,8 @@ func (a *ApiHandlerSuite) TestPostValue_ShouldReturn200() {
 		strings.NewReader("välue"),
 	)
 
+	a.cache.On("Set", "key", "välue")
+
 	a.apiHandler.Router.ServeHTTP(a.recorder, req)
 	assert.Equal(a.T(), http.StatusOK, a.recorder.Code)
 }
@@ -66,6 +72,8 @@ func (a *ApiHandlerSuite) TestGetValue_ShouldReturn404() {
 		nil,
 	)
 
+	a.cache.On("Get", "key").Return("", false)
+
 	a.apiHandler.Router.ServeHTTP(a.recorder, req)
 	assert.Equal(a.T(), http.StatusNotFound, a.recorder.Code)
 }
@@ -77,6 +85,7 @@ func (a *ApiHandlerSuite) TestGetValue_ShouldReturn200() {
 		strings.NewReader("välue"),
 	)
 
+	a.cache.On("Set", "key", "välue")
 	a.apiHandler.Router.ServeHTTP(a.recorder, req)
 
 	req, _ = http.NewRequest(
@@ -84,6 +93,8 @@ func (a *ApiHandlerSuite) TestGetValue_ShouldReturn200() {
 		"/key",
 		nil,
 	)
+
+	a.cache.On("Get", "key").Return("välue", true)
 
 	a.apiHandler.Router.ServeHTTP(a.recorder, req)
 	assert.Equal(a.T(), http.StatusOK, a.recorder.Code)
