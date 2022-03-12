@@ -13,11 +13,11 @@ import (
 
 var (
 	apiHandler *api.ApiHandler
-	cache      *mocks.Cache
+	cache      *mocks.CacheStore
 )
 
 func TestMain(m *testing.M) {
-	cache = &mocks.Cache{}
+	cache = &mocks.CacheStore{}
 	apiHandler = api.NewApiHandler(cache)
 
 	os.Exit(m.Run())

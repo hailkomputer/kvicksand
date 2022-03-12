@@ -8,6 +8,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
+//go:generate mockery --name CacheStore --filename cachestore.go
+
 type CacheStore interface {
 	// Get tries to fetch the value for the given key
 	// It will always return second argument as false, in cases where first
