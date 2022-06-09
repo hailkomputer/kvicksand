@@ -1,14 +1,13 @@
 package api
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"io"
 	"net/http"
-
-	"github.com/gorilla/mux"
+	"regexp"
+	"strings"
 )
-
-//go:generate mockery --name CacheStore --filename cachestore.go
 
 type CacheStore interface {
 	// Get tries to fetch the value for the given key
@@ -21,38 +20,116 @@ type CacheStore interface {
 	Set(key, value string)
 }
 
+type route struct {
+	method  string
+	regex   *regexp.Regexp
+	handler http.HandlerFunc
+}
+
+type routes []route
+
+func (a *ApiHandler) createRoutes() routes {
+	return routes{
+		route{
+			method:  http.MethodGet,
+			regex:   regexp.MustCompile(`^/$`),
+			handler: a.handleIndex(),
+		},
+		route{
+			method:  http.MethodPost,
+			regex:   regexp.MustCompile(`^/(?P<key>[a-zA-Z0-9]+)$`),
+			handler: a.handlePostValue(),
+		},
+		route{
+			method:  http.MethodGet,
+			regex:   regexp.MustCompile(`^/(?P<key>[a-zA-Z0-9]+)$`),
+			handler: a.handleGetValue(),
+		},
+	}
+}
+
+type ctxKey struct{}
+
+func getField(r *http.Request, index int) string {
+	fields := r.Context().Value(ctxKey{}).([]string)
+	return fields[index]
+}
+
 type ApiHandler struct {
-	Router *mux.Router
 	Cache  CacheStore
+	Router http.Handler
 }
 
 func NewApiHandler(cache CacheStore) *ApiHandler {
 	a := &ApiHandler{
-		Router: mux.NewRouter().StrictSlash(false),
-		Cache:  cache,
+		Cache: cache,
 	}
 
-	a.Router.Use(loggingMiddleware)
-
-	for _, route := range a.createRoutes() {
-		a.Router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(route.Handler)
-		log.Printf("registered endpoint %s:%s", route.Method, route.Name)
-	}
+	a.Router = http.HandlerFunc(a.Serve)
 	return a
 }
 
-func (a *ApiHandler) ServeHttp(w http.ResponseWriter, r *http.Request) {
-	a.Router.ServeHTTP(w, r)
+func (a *ApiHandler) Serve(w http.ResponseWriter, r *http.Request) {
+	var allow []string
+	for _, route := range a.createRoutes() {
+		matches := route.regex.FindStringSubmatch(r.URL.Path)
+		if len(matches) > 0 {
+			if r.Method != route.method {
+				allow = append(allow, route.method)
+				continue
+			}
+			ctx := context.WithValue(r.Context(), ctxKey{}, matches[1:])
+			route.handler(w, r.WithContext(ctx))
+			return
+		}
+	}
+	if len(allow) > 0 {
+		w.Header().Set("Allow", strings.Join(allow, ", "))
+		http.Error(w, "405 method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	http.NotFound(w, r)
 }
 
-// loggingMiddleware creates a middleware for logging each request
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println(fmt.Sprintf("%s:%s", r.Method, r.RequestURI))
-		next.ServeHTTP(w, r)
-	})
+func (a *ApiHandler) handleIndex() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello!")
+	}
+}
+
+func (a *ApiHandler) handlePostValue() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key := getField(r, 0)
+		if r.Body == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		a.Cache.Set(key, string(body))
+	}
+}
+
+func (a *ApiHandler) handleGetValue() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key := getField(r, 0)
+		value, inCache := a.Cache.Get(key)
+		switch inCache {
+		case false:
+			w.WriteHeader(http.StatusNotFound)
+			return
+		case true:
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			if _, err := io.WriteString(w, value); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 }
