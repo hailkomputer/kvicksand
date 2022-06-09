@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -65,7 +66,7 @@ func NewApiHandler(cache CacheStore) *ApiHandler {
 		Cache: cache,
 	}
 
-	a.Router = http.HandlerFunc(a.Serve)
+	a.Router = loggingMiddleware(http.HandlerFunc(a.Serve))
 	return a
 }
 
@@ -89,6 +90,13 @@ func (a *ApiHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.NotFound(w, r)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println(fmt.Sprintf("%s:%s", r.Method, r.RequestURI))
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (a *ApiHandler) handleIndex() http.HandlerFunc {
