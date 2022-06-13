@@ -49,6 +49,18 @@ func TestIndex(t *testing.T) {
 			req:        &http.Request{Method: http.MethodGet, URL: &url.URL{Path: "/"}, Body: nil},
 			code:       http.StatusOK,
 		},
+		{
+			name:       "should return 404",
+			cacheStore: nil,
+			req:        &http.Request{Method: http.MethodGet, URL: &url.URL{Path: "notfound"}, Body: nil},
+			code:       http.StatusNotFound,
+		},
+		{
+			name:       "should return 405",
+			cacheStore: nil,
+			req:        &http.Request{Method: http.MethodPost, URL: &url.URL{Path: "/"}, Body: nil},
+			code:       http.StatusMethodNotAllowed,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

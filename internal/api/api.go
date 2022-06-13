@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// CacheStore is an interface for the cache store
 type CacheStore interface {
 	// Get tries to fetch the value for the given key
 	// It will always return second argument as false, in cases where first
@@ -56,11 +57,13 @@ func getField(r *http.Request, index int) string {
 	return fields[index]
 }
 
+// ApiHandler is the main handler for the API
 type ApiHandler struct {
 	Cache  CacheStore
 	Router http.Handler
 }
 
+// NewApiHandler creates a new ApiHandler
 func NewApiHandler(cache CacheStore) *ApiHandler {
 	a := &ApiHandler{
 		Cache: cache,
@@ -70,6 +73,7 @@ func NewApiHandler(cache CacheStore) *ApiHandler {
 	return a
 }
 
+// Serve is the main router for the api
 func (a *ApiHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	var allow []string
 	for _, route := range a.createRoutes() {
