@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hailkomputer/kvicksand/internal/cache"
 )
@@ -14,7 +15,7 @@ func TestMain(m *testing.M) {
 
 func TestCache(t *testing.T) {
 
-	cache := cache.NewCache()
+	cache := cache.NewCache(time.Millisecond * 30)
 
 	_, ok := cache.Get("k1")
 	if ok {
@@ -29,5 +30,10 @@ func TestCache(t *testing.T) {
 	}
 	if !strings.EqualFold(v1, "v1") {
 		t.Errorf("value for key should match")
+	}
+
+	time.Sleep(time.Second * 1)
+	if !ok {
+		t.Errorf("value for key should not exist due to expiration")
 	}
 }
