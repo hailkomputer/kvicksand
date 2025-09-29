@@ -36,7 +36,7 @@ func (m *cacheStoreMock) Get(key string) (string, bool) {
 
 func TestIndex(t *testing.T) {
 	cache := &cacheStoreMock{}
-	apiHandler := api.NewApiHandler(cache)
+	apiHandler := api.NewAPIHandler(cache)
 	tests := []struct {
 		name       string
 		cacheStore *cacheStoreMock
@@ -95,7 +95,7 @@ func TestPostValue(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiHandler := api.NewApiHandler(tt.cacheStore)
+		apiHandler := api.NewAPIHandler(tt.cacheStore)
 		recorder := httptest.NewRecorder()
 		apiHandler.Router.ServeHTTP(recorder, tt.req)
 		if recorder.Code != tt.code {
@@ -130,7 +130,7 @@ func TestGetValue(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiHandler := api.NewApiHandler(tt.cacheStore)
+		apiHandler := api.NewAPIHandler(tt.cacheStore)
 		recorder := httptest.NewRecorder()
 		apiHandler.Router.ServeHTTP(recorder, tt.req)
 		if recorder.Code != tt.code {

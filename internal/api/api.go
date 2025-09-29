@@ -1,3 +1,4 @@
+// Package api implements a simple key-value store API with in-memory caching.
 package api
 
 import (
@@ -30,7 +31,7 @@ type route struct {
 
 type routes []route
 
-func (a *ApiHandler) createRoutes() routes {
+func (a *APIHandler) createRoutes() routes {
 	return routes{
 		route{
 			method:  http.MethodGet,
@@ -57,15 +58,13 @@ func getField(r *http.Request, index int) string {
 	return fields[index]
 }
 
-// ApiHandler is the main handler for the API
-type ApiHandler struct {
+type APIHandler struct {
 	Cache  CacheStore
 	Router http.Handler
 }
 
-// NewApiHandler creates a new ApiHandler
-func NewApiHandler(cache CacheStore) *ApiHandler {
-	a := &ApiHandler{
+func NewAPIHandler(cache CacheStore) *APIHandler {
+	a := &APIHandler{
 		Cache: cache,
 	}
 
@@ -73,8 +72,7 @@ func NewApiHandler(cache CacheStore) *ApiHandler {
 	return a
 }
 
-// Serve is the main router for the api
-func (a *ApiHandler) Serve(w http.ResponseWriter, r *http.Request) {
+func (a *APIHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	var allow []string
 	for _, route := range a.createRoutes() {
 		matches := route.regex.FindStringSubmatch(r.URL.Path)
@@ -98,18 +96,18 @@ func (a *ApiHandler) Serve(w http.ResponseWriter, r *http.Request) {
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println(fmt.Sprintf("%s:%s", r.Method, r.RequestURI))
+		log.Printf(fmt.Sprintf("%s:%s", r.Method, r.RequestURI))
 		next.ServeHTTP(w, r)
 	})
 }
 
-func (a *ApiHandler) handleIndex() http.HandlerFunc {
+func (a *APIHandler) handleIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello!")
 	}
 }
 
-func (a *ApiHandler) handlePostValue() http.HandlerFunc {
+func (a *APIHandler) handlePostValue() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := getField(r, 0)
 		if r.Body == nil {
@@ -126,7 +124,7 @@ func (a *ApiHandler) handlePostValue() http.HandlerFunc {
 	}
 }
 
-func (a *ApiHandler) handleGetValue() http.HandlerFunc {
+func (a *APIHandler) handleGetValue() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		key := getField(r, 0)
 		value, inCache := a.Cache.Get(key)

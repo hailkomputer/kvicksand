@@ -27,7 +27,7 @@ func run() error {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      api.NewApiHandler(cache.NewCache(time.Second * 30)).Router,
+		Handler:      api.NewAPIHandler(cache.NewCache(time.Minute * 30)).Router,
 	}
 
 	go func() {
