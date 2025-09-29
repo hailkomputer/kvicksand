@@ -103,7 +103,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 func (a *APIHandler) handleIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "Hello!")
+		_, _ = fmt.Fprintln(w, "Hello!")
 	}
 }
 

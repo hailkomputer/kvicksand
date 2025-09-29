@@ -73,7 +73,6 @@ func TestBasicOperations(t *testing.T) {
 			switch tt.operation {
 			case "set":
 				cache.Set(tt.key, tt.value)
-				// Verify the set worked
 				got, ok := cache.Get(tt.key)
 				if ok != tt.wantOk {
 					t.Errorf("Get() after Set() ok = %v, wantOk %v", ok, tt.wantOk)
@@ -158,7 +157,6 @@ func TestConcurrentAccess(t *testing.T) {
 
 			var wg sync.WaitGroup
 
-			// Launch writers
 			for w := 0; w < tt.numWriters; w++ {
 				wg.Add(1)
 				go func(writerID int) {
@@ -171,7 +169,6 @@ func TestConcurrentAccess(t *testing.T) {
 				}(w)
 			}
 
-			// Launch readers
 			for r := 0; r < tt.numReaders; r++ {
 				wg.Add(1)
 				go func(readerID int) {
@@ -183,10 +180,8 @@ func TestConcurrentAccess(t *testing.T) {
 				}(r)
 			}
 
-			// Wait for all operations to complete
 			wg.Wait()
 
-			// Verify cache is still functional
 			cache.Set("test_key", "test_value")
 			val, ok := cache.Get("test_key")
 			if !ok || val != "test_value" {
@@ -196,7 +191,6 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 }
 
-// BenchmarkCacheOperations benchmarks different cache operations
 func BenchmarkCacheOperations(b *testing.B) {
 	benchmarks := []struct {
 		name          string
@@ -258,8 +252,6 @@ func BenchmarkCacheOperations(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			// Note: This assumes your cache implementation can accept numShards parameter
-			// Adjust based on your actual implementation
 			cache := cache.NewCache(30 * time.Minute)
 			defer cache.Close()
 
@@ -316,8 +308,6 @@ func BenchmarkCacheOperations(b *testing.B) {
 	}
 }
 
-// fastrand is a fast pseudo-random number generator for benchmarks
-// This avoids the overhead of math/rand in benchmarks
 func fastrand() uint32 {
 	var x uint32 = 0x123456
 	x ^= x << 13
