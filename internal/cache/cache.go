@@ -36,10 +36,12 @@ func NewCache(expiration time.Duration) *Cache {
 		stopCleanUp: make(chan struct{}),
 	}
 
-	for i := 0; i < numShards; i++ {
-		cache.shards[i] = &shard{
+	shardIndex := 0
+	for range cache.shards {
+		cache.shards[shardIndex] = &shard{
 			items: make(map[string]Value),
 		}
+		shardIndex++
 	}
 
 	cache.startCleanUp()
@@ -103,7 +105,7 @@ func (c *Cache) startCleanUp() {
 		for {
 			select {
 			case <-ticker.C:
-				for i := 0; i < shardsPerCleanUp; i++ {
+				for range shardsPerCleanUp {
 					shard := c.shards[shardIndex]
 					c.cleanUpShard(shard)
 					shardIndex = (shardIndex + 1) % numShards
